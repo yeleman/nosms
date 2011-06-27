@@ -76,8 +76,14 @@ Configuration
     #NOSMS_TRANSPORT_PASSWORD = None
 
 #. Add the URL pattern to your urls.py file:
+
+::
+
     (r'^nosms/', include('nosms.urls')),
 
 #. Launch the outgoing message command
+
+::
+
     ./manage.py nosmsloop
 

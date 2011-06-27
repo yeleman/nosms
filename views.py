@@ -8,20 +8,11 @@ import logging
 
 from django.http import HttpResponse, Http404
 from django.shortcuts import redirect
-from django.conf import settings
 
-from models import Message
+from nosms.models import Message
+from nosms.utils import process_incoming_message
 
 logger = logging.getLogger(__name__)
-
-
-def import_path(name):
-    modname, _, attr = name.rpartition('.')
-    if not modname:
-        # name was just a single module name
-        return __import__(attr)
-    m = __import__(modname, fromlist=[attr])
-    return getattr(m, attr)
 
 
 def handler_get(request):
@@ -50,23 +41,7 @@ def handler(request, identity, text):
                       direction=Message.DIRECTION_INCOMING)
     message.save()
 
-    try:
-        handler_func = import_path(settings.NOSMS_HANDLER)
-    except AttributeError:
-        message.status = Message.STATUS_ERROR
-        message.save()
-        logger.error(u"NO SMS_HANDLER defined while receiving SMS")
-    except Exception as e:
-        message.status = Message.STATUS_ERROR
-        message.save()
-        logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
-    else:
-        try:
-            thread.start_new_thread(handler_func, (message,))
-        except Exception as e:
-            message.status = Message.STATUS_ERROR
-            message.save()
-            logger.error(u"SMS handler failed on %s with %r" % (message, e))
+    process_incoming_message(message)
 
     return HttpResponse(u"Thanks %s, the following message " \
                         "have been processed:\n%s" % (identity, text), \

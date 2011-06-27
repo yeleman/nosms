@@ -20,8 +20,11 @@ from urlparse import parse_qs
 from time import sleep
 from Queue import Queue, Empty
 from urllib import urlencode, urlopen
+import logging
 
 import gammu
+
+logger = logging.getLogger()
 
 '''
 The port this webserver will be listening to for messages
@@ -111,6 +114,7 @@ class ModemThread(threading.Thread):
             else:
                 msg['SMSC'] = {'Location': 1}
                 try:
+                    logger.info(u"Sending SMS: %s" % msg)
                     self.sm.SendSMS(msg)
                 except gammu.ERR_UNKNOWN:
                     pass
@@ -121,6 +125,7 @@ class ModemThread(threading.Thread):
             except gammu.ERR_EMPTY:
                 pass
             else:
+                logger.info(u"Received SMS: %s" % msg)
                 if not self.regex.match(msg['Number']):
                     self.delete(msg)
                 else:
@@ -141,11 +146,14 @@ class ModemThread(threading.Thread):
             pass
 
 if __name__ == '__main__':
+    logger.info(u"Starting %s" % __name__)
     to_modem = Queue()
     kill = threading.Event()
 
+    logger.info(u"\tstarting modem...")
     modem = ModemThread(kill, to_modem)
     modem.start()
+    logger.info(u"\tstarting web server...")
     wsgi = WsgiThread(to_modem)
     wsgi.start()
 
@@ -153,6 +161,7 @@ if __name__ == '__main__':
         try:
             sleep(2)
         except KeyboardInterrupt:
+            logger.info(u"Exiting.")
             break
     kill.set()
     wsgi.server.shutdown()

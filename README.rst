@@ -28,12 +28,12 @@ When NoSMS knows the problem is temporary, it leaves messages as created
 for later processing.
 
 NoSMS respond to Kannel interface only:
-- receives incoming SMS as GET request from Kannel
-- sends outgoing SMS as GET request to Kannel
+* receives incoming SMS as GET request from Kannel
+* sends outgoing SMS as GET request to Kannel
 
 This is implemented with:
-- URL rule to receive messages in your Django configuration
-- Django management command to loop on outgoing SMS submission.
+* URL rule to receive messages in your Django configuration
+* Django management command to loop on outgoing SMS submission.
 
 Usage
 -----

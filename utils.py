@@ -25,8 +25,16 @@ def import_path(name):
     return getattr(m, attr)
 
 
-def process_incoming_message(message):
+def send_sms(to, text):
+    """ create arbitrary message for sending """
+    m = Message(identity=to, text=text)
+    m.direction = Message.DIRECTION_OUTGOING
+    m.status = Message.STATUS_CREATED
+    m.save()
 
+
+def process_incoming_message(message):
+    """ call handler on message """
     try:
         handler_func = import_path(settings.NOSMS_HANDLER)
     except AttributeError:

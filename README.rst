@@ -75,6 +75,8 @@ Configuration
     #NOSMS_TRANSPORT_USERNAME = None
     #NOSMS_TRANSPORT_PASSWORD = None
 
+#. Add nosms to your INSTALLED_APPS in settings.py
+
 #. Add the URL pattern to your urls.py file:
 
 ::

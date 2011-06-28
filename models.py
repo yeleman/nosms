@@ -38,9 +38,9 @@ class Message(models.Model):
         (DIRECTION_INCOMING, _(u"Incoming")),
         (DIRECTION_OUTGOING, _(u"Outgoing")))
 
-    STATUS_CREATED = 0
-    STATUS_PROCESSED = 1
-    STATUS_ERROR = 2
+    STATUS_CREATED = '0'
+    STATUS_PROCESSED = '1'
+    STATUS_ERROR = '2'
 
     STATUS_CHOICES = (
         (STATUS_CREATED, _(u"Created")),
@@ -75,7 +75,7 @@ class Message(models.Model):
 
     def get_status_display(self):
         for status, name in Message.STATUS_CHOICES:
-            if status == int(self.status):
+            if status == self.status:
                 return name
         return _(u"Unknown")
 

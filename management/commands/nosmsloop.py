@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 from nosms.models import Message
 from nosms.utils import process_outgoing_message, process_incoming_message
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -25,11 +26,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        print("Launching NOSMS main loop")
+        logger.info("Launching NOSMS main loop")
 
         incoming = Message.incoming.filter(status=Message.STATUS_CREATED).all()
         if incoming.count() > 0:
-            print(u"Dispatching %d unhandled incoming messages" % incoming.count())
+            logger.info(u"Dispatching %d unhandled " \
+                        "incoming messages" % incoming.count())
             for message in incoming:
                 try:
                     process_incoming_message(message)
@@ -38,7 +40,7 @@ class Command(BaseCommand):
                 except:
                     pass
 
-        print(u"Waiting for outgoing message to be sent...")
+        logger.info(u"Waiting for outgoing message to be sent...")
         while True:
             message = next_message()
             if message:
@@ -46,7 +48,7 @@ class Command(BaseCommand):
                 try:
                     process_outgoing_message(message)
                 except Exception as e:
-                    logger.error("Unable to send %s with %r" %(message, e))
+                    logger.error("Unable to send %s with %r" % (message, e))
                     message.status = Message.STATUS_ERROR
                     message.save()
                 else:

@@ -1,17 +1,16 @@
 #!/usr/bin/env python
+# encoding=utf-8
+# maintainer: dgelvin, rgaudin
 
-'''
-This is a very simple modem -> http gateway script. It depends only gammu:
-    aptitude install python-gammu
+""" Kannel-like interface to a Modem using Gammu.
 
-It has its own wsgi webserver that listens for messages to be sent
-out the modem and incoming messages received by the modem will be sent
-to the specified http url.
+This script acts as a fake Kannel setup.
+It answers to the same HTTP requests and forwards incoming SMS
+to HTTP as well.
 
-The script will cleanly exit on KeyboardInterrupt
+It depends only on python-gammu.
 
-'''
-
+The script will cleanly exit on KeyboardInterrupt """
 
 import re
 import threading
@@ -21,51 +20,43 @@ from time import sleep
 from Queue import Queue, Empty
 from urllib import urlencode, urlopen
 import logging
+import random
 
 import gammu
 
-logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-'''
-The port this webserver will be listening to for messages
-It presents the same interface as kannel. For example, if the port is 1234
-then you can send a message out the modem by GETing:
-    http://localhost:1234/cgi-bin/sendsms?to=555555&text=Hello+world
-'''
+""" Configuration
+
+* Host and Port for the HTTP server
+* Connection and Device for Modem access """
+
+# HTTP Server will listen for messages on default kannel path:
+# http://localhost:1234/cgi-bin/sendsms?to=555555&text=Hello+world
+
 LISTENING_PORT = 13013
 
-# The gammu connection protocol- for a modem you almost certainly want 'at'
+# Gammu connection protocol
+# most modem are 'at'
 CONNECTION = 'at'
 
-# Modem device
+# serial device to access modem
 DEVICE = '/dev/ttyUSB0'
 
-'''
-A regex of phone numbers from which messages will be passed to the gateway.
-This is important as sometimes you get a message from let's
-say MTN with MTN as the identity.
-You don't want to respond to that. Also, if you get a marketing
-message from a short-code (let's say 8008) and you respond
-"Can't understand your message...", it may respond:
-"Can't understand your message" and hilarity ensues.
-You could use this regex as a white-list.
-'''
+# white list of numbers to accept incoming SMS from.
+# useful for filtering operator SPAM
+# if you don't want filtering, just use r'^.*$'
 NUMBER_REGEX = r'^\+223[76]\d{7}$'
 
-'''
-The webserver to send incoming messages to. Right now it sends through GET
-and the GET variable names are hard coded. Currenlty the script will try
-to send messages to the another web server by GETing:
-    http://localhost:8000/sms?from=555555&text=Hello+world
-Important: The web server that this goes to must respond with http status code
-202. That is the appropriate code for this sort of thing.
-If it responds with anything other than 202 this script will not delete the SMS
-from the SIM / Modem and it will continue trying to GET until it gets 202
-'''
+# HTTP URL which will receive incoming SMS
+# SMS are sent in a GET request like
+# http://localhost:8000/sms?from=555555&text=Hello+world
 SENDING_URL = 'http://localhost:8000/nosms/'
 
 
 class WsgiThread(threading.Thread):
+    """ HTTP Web Server receiving Outgoing SMS requests """
     def __init__(self, to_modem):
         threading.Thread.__init__(self, name='wsgi')
         self.to_modem = to_modem
@@ -88,59 +79,201 @@ class WsgiThread(threading.Thread):
 
 
 class ModemThread(threading.Thread):
+    """ Gammu query loop for sending/receiving SMS from Modem """
     def __init__(self, kill, to_modem):
         threading.Thread.__init__(self, name='modem')
         self.kill = kill
+        # Outgoing SMS queue
         self.to_modem = to_modem
         self.sm = gammu.StateMachine()
         self.sm.SetConfig(0, {'Connection': CONNECTION, 'Device': DEVICE})
         self.regex = re.compile(NUMBER_REGEX)
+        # multipart messages store
+        self.store = {}
 
     def delete(self, msg):
+        """ delete an SMS from the Modem memory """
         try:
             self.sm.DeleteSMS(msg['Folder'], msg['Location'])
         except (gammu.ERR_EMPTY, gammu.ERR_INVALIDLOCATION):
             pass
 
+    def msg_is_multipart(self, msg):
+        """ is this message part of a multipart one ? """
+        if 'MultiPart' in msg:
+            return msg['MultiPart']
+        try:
+            return msg['UDH']['AllParts'] > 1
+        except:
+            return False
+
+    def msg_is_unicode(self, msg):
+        """ does this message needs to be sent as unicode ? """
+        try:
+            msg['Text'].encode('ascii')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return True
+        else:
+            return False
+
+    def msg_multipart_id(self, msg):
+        """ internal ID of the multipart message """
+        return msg['UDH']['ID8bit']
+
+    def msg_store_part(self, msg):
+        """ stores part of a multipart message for later processing """
+        msgid = self.msg_multipart_id(msg)
+        if not msgid in self.store:
+            self.store[msgid] = {'AllParts': msg['UDH']['AllParts'], \
+                            'parts': {}, 'DateTime': msg['DateTime'], \
+                            'Number': msg['Number']}
+        self.store[msgid]['parts'][msg['UDH']['PartNumber']] = msg['Text']
+
+    def msg_is_complete(self, msg):
+        """ if this message complete ? All parts retrieved ? """
+        if not self.msg_is_multipart(msg):
+            return True
+
+        msgid = self.msg_multipart_id(msg)
+        if not msgid in self.store:
+            return False
+        if self.store[msgid]['parts'].keys().__len__() == \
+                                                 self.store[msgid]['AllParts']:
+            return True
+        return False
+
+    def msg_unified(self, msg):
+        """ a concatenated message representing all parts of a multipart """
+        msgid = self.msg_multipart_id(msg)
+        text = []
+        for i in range(1, self.store[msgid]['AllParts'] + 1):
+            text.append(self.store[msgid]['parts'][i])
+        return {'Number': self.store[msgid]['Number'], \
+                   'DateTime': self.store[msgid]['DateTime'], \
+                   'Text': u"".join(text), \
+                   'MultiPart': True, \
+                   'ID': msgid}
+
+    def msg_delete_multipart(self, msg):
+        """ remove multipart message from internal store """
+        del(self.store[msg['ID']])
+
     def run(self):
         self.sm.Init()
         while not self.kill.is_set():
 
-            #Sending
+            # sending outgoing messages
             try:
+                # retrieve a message from outgoing queue
                 msg = to_modem.get_nowait()
             except Empty:
                 pass
             else:
-                msg['SMSC'] = {'Location': 1}
-                try:
-                    logger.info(u"Sending SMS: %s" % msg)
-                    self.sm.SendSMS(msg)
-                except gammu.ERR_UNKNOWN:
-                    pass
+                # important to know length and type of message
+                text = msg['Text'].decode('utf-8')
+                number = msg['Number']
+                is_unicode = self.msg_is_unicode(msg)
+                length = text.__len__()
 
-            # Receiving
+                logger.info(u"OUTGOING [%d] %s message: %s" \
+                            % (length, u"unicode" \
+                                       if is_unicode \
+                                       else u"ascii", \
+                               text))
+
+                # single ascii SMS
+                # max_length of 160 chars.
+                if not is_unicode and length <= 160:
+                    encoded = [msg]
+                # multipart, ascii SMS.
+                # will be split in 153 chars long SMS.
+                elif not is_unicode and length > 160:
+                    smsinfo = {'Class': 1, \
+                               'Unicode': False, \
+                               'Entries': [{'ID': 'ConcatenatedTextLong', \
+                                            'Buffer': text}]}
+                    encoded = gammu.EncodeSMS(smsinfo)
+                # single unicode SMS.
+                # max_length of 70 chars.
+                elif is_unicode and length <= 70:
+                    smsinfo = {'Class': 1, \
+                               'Unicode': True, \
+                               'Entries': [{'ID': 'ConcatenatedTextLong', \
+                                            'Buffer': text}]}
+                    encoded = gammu.EncodeSMS(smsinfo)
+                # multipart unicode SMS
+                # will be split in 63 chars long SMS.
+                else:
+                    smsinfo = {'Class': 1, \
+                               'Unicode': True, \
+                               'Entries': [{'ID': 'ConcatenatedTextLong', \
+                                            'Buffer': text}]}
+                    encoded = gammu.EncodeSMS(smsinfo)
+
+                # loop on parts
+                for msg in encoded:
+                    msg['SMSC'] = {'Location': 1}
+                    msg['Number'] = number
+
+                    try:
+                        logger.debug(u"Sending SMS: %s" % msg)
+                        self.sm.SendSMS(msg)
+                    except gammu.ERR_UNKNOWN:
+                        pass
+
+            # receiving incoming messages
             try:
+                # get first SMS from Modem
                 msg = self.sm.GetNextSMS(0, True)[0]
             except gammu.ERR_EMPTY:
                 pass
             else:
-                logger.info(u"Received SMS: %s" % msg)
+                logger.debug(u"Received SMS: %s" % msg)
+
+                # remove SMS from modem and move-on if not in white-list
                 if not self.regex.match(msg['Number']):
                     self.delete(msg)
                 else:
-                    try:
-                        res = urlopen('%s?%s' \
-                                      % (SENDING_URL, \
-                                         urlencode({'from': msg['Number'], \
-                                         'text': msg['Text']})))
-                    except IOError:
-                        pass
-                    else:
-                        if res.code == 202:
-                            self.delete(msg)
+                    # if SMS is a part of a multipart SMS
+                    # store the part and remove SMS from Modem.
+                    if self.msg_is_multipart(msg):
+                        self.msg_store_part(msg)
+                        self.delete(msg)
+
+                    # if SMS is a single message or was last part of a
+                    # multipart message
+                    if self.msg_is_complete(msg):
+                        # builf concatenated multipart if required
+                        if self.msg_is_multipart(msg):
+                            msg = self.msg_unified(msg)
+
+                        try:
+                            logger.info(u"INCOMING [%d] from %s: %s" \
+                            % (msg['Text'].__len__(), \
+                               msg['Number'], msg['Text']))
+
+                            # submit message to application
+                            res = urlopen('%s?%s' \
+                                          % (SENDING_URL, \
+                                            urlencode({'from': msg['Number'], \
+                                             'text': msg['Text']})))
+                        except IOError:
+                            # we don't do anything so modem will find
+                            # the SMS again next time
+                            pass
+                        else:
+                            if res.code == 202:
+                                # application received the SMS
+                                # delete multipart from internal store
+                                if self.msg_is_multipart(msg):
+                                    self.msg_delete_multipart(msg)
+                                else:
+                                    # delete SMS from modem
+                                    self.delete(msg)
+            # main loop 500ms
             self.kill.wait(.5)
         try:
+            # close modem connection properly
             self.sm.Terminate()
         except:
             pass

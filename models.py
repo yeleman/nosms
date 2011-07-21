@@ -28,7 +28,7 @@ class Message(models.Model):
 
     class Meta:
         verbose_name = _(u"Message")
-        verbose_name = _(u"Messages")
+        verbose_name_plural = _(u"Messages")
         ordering = ['-date', 'direction']
 
     DIRECTION_INCOMING = 'I'

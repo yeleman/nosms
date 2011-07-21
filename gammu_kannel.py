@@ -24,35 +24,13 @@ import random
 
 import gammu
 
+from nosms.settings import *
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+gammu_version = float(gammu.Version()[0].rpartition('.')[0])
 
-""" Configuration
-
-* Host and Port for the HTTP server
-* Connection and Device for Modem access """
-
-# HTTP Server will listen for messages on default kannel path:
-# http://localhost:1234/cgi-bin/sendsms?to=555555&text=Hello+world
-
-LISTENING_PORT = 13013
-
-# Gammu connection protocol
-# most modem are 'at'
-CONNECTION = 'at'
-
-# serial device to access modem
-DEVICE = '/dev/ttyUSB0'
-
-# white list of numbers to accept incoming SMS from.
-# useful for filtering operator SPAM
-# if you don't want filtering, just use r'^.*$'
-NUMBER_REGEX = r'^\+223[76]\d{7}$'
-
-# HTTP URL which will receive incoming SMS
-# SMS are sent in a GET request like
-# http://localhost:8000/sms?from=555555&text=Hello+world
-SENDING_URL = 'http://localhost:8000/nosms/'
+logger.info(u"Gammu Version: %s" % gammu_version)
 
 
 class WsgiThread(threading.Thread):
@@ -86,7 +64,10 @@ class ModemThread(threading.Thread):
         # Outgoing SMS queue
         self.to_modem = to_modem
         self.sm = gammu.StateMachine()
-        self.sm.SetConfig(0, {'Connection': CONNECTION, 'Device': DEVICE})
+        if gammu_version < 1.29:
+            self.sm.ReadConfig(0, 0)
+        else:
+            self.sm.SetConfig(0, {'Connection': CONNECTION, 'Device': DEVICE})
         self.regex = re.compile(NUMBER_REGEX)
         # multipart messages store
         self.store = {}

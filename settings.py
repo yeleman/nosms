@@ -34,4 +34,4 @@ NUMBER_REGEX = r'^\+223[76]\d{7}$'
 # HTTP URL which will receive incoming SMS
 # SMS are sent in a GET request like
 # http://localhost:8000/sms?from=555555&text=Hello+world
-SENDING_URL = 'http://localhost:8000/nosms/'
+SENDING_URL = 'https://pnlp.sante.gov.ml/nosms/'

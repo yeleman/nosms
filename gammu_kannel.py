@@ -24,7 +24,7 @@ import random
 
 import gammu
 
-from nosms.settings import *
+from settings import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

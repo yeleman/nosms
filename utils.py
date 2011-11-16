@@ -205,7 +205,7 @@ def get_ussd(ussd):
     import subprocess
 
     ussd_bin = os.path.join(os.path.dirname(__file__), 'ussd.sh')
-    if hasattr(subprocess, 'check_output'):
+    if not hasattr(subprocess, 'check_output'):
         ussd_string = subprocess.Popen([ussd_bin, ussd], 
                                      stdout=subprocess.PIPE).communicate()[0]
     else:

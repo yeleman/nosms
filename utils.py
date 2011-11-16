@@ -209,6 +209,6 @@ def get_ussd(ussd):
         ussd_string = subprocess.Popen([ussd_bin, ussd], 
                                      stdout=subprocess.PIPE).communicate()[0]
     else:
-        ussd_string = subprocess.check_output([ussd_bin, ussd]).strip()
+        ussd_string = subprocess.check_output([ussd_bin, ussd]).strip().strip()
 
     return ussd_string

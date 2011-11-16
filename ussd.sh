@@ -49,9 +49,9 @@ then
     kill_if_running
 elif [ "$INIT" = "lsb" ]
 then
-    sudo service gammu-smsd stop
+    sudo service gammu-smsd stop &> /dev/null
 else
-    sudo stop gammu-smsd
+    sudo stop gammu-smsd &> /dev/null
 fi
 
 # make USSD request via Gammu.
@@ -79,9 +79,9 @@ then
         gammu-smsd -c $SMSD_CONF -d -p $SMSD_PID_FILE
     elif [ "$INIT" = "lsb" ]
     then
-        sudo service gammu-smsd start
+        sudo service gammu-smsd start &> /dev/null
     else
-        sudo stop gammu-smsd
+        sudo start gammu-smsd &> /dev/null
     fi
 fi
 

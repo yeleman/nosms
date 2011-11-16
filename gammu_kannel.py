@@ -237,7 +237,7 @@ class ModemThread(threading.Thread):
                             res = urlopen('%s?%s' \
                                           % (SENDING_URL, \
                                             urlencode({'from': msg['Number'], \
-                                             'text': msg['Text']})))
+                                             'text': msg['Text'].encode('utf-8')})))
                         except IOError:
                             # we don't do anything so modem will find
                             # the SMS again next time

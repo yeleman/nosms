@@ -10,6 +10,7 @@ Requirements
 
 * python-gammu
 * Django
+* gammu
 
 Documentation
 -------------
@@ -31,8 +32,10 @@ NoSMS respond to Kannel interface only:
 * receives incoming SMS as GET request from Kannel
 * sends outgoing SMS as GET request to Kannel
 
+[NEW] NoSMS can also be used with Gammu-SMSd.
+
 This is implemented with:
-* URL rule to receive messages in your Django configuration
+* URL rule to receive messages in your Django configuration.
 * Django management command to loop on outgoing SMS submission.
 
 Usage
@@ -64,6 +67,8 @@ Configuration
 
 ::
 
+    NOSMS_TRANSPORT = 'smsd' or 'kannel'
+
     # your SMS handler
     # A function which take a nosms.models.Message object as parameter
     NOSMS_HANDLER = 'myapp.myhandler'
@@ -74,6 +79,7 @@ Configuration
     NOSMS_TRANSPORT_PORT = 13013
     #NOSMS_TRANSPORT_USERNAME = None
     #NOSMS_TRANSPORT_PASSWORD = None
+    
 
 #. Add nosms to your INSTALLED_APPS in settings.py
 
@@ -87,5 +93,11 @@ Configuration
 
 ::
 
-    ./manage.py nosmsloop
+    ./manage.py nosms_outgoing
+
+#. Launch the incoming process
+
+::
+
+    ./manage.py nosms_smsd_incoming OR ./gammu_kannel.py (fake kannel)
 

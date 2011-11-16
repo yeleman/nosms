@@ -21,7 +21,7 @@ LISTENING_PORT = 13013
 
 # Gammu connection protocol
 # most modem are 'at'
-CONNECTION = 'at'
+CONNECTION = 'at115200'
 
 # serial device to access modem
 DEVICE = '/dev/ttyUSB0'

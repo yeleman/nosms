@@ -86,7 +86,7 @@ def message_to_parts(message):
                   'Coding': '',
                   'TextDecoded': '',
                   'MultiPart': '',
-                  'UDH': '%s0101' % udh,
+                  'UDH': None,
                   'CreatorID': CREATOR}
     if not is_unicode and length <= MAX_LEN:
         # msg is short ascii text. create single

@@ -6,14 +6,20 @@ import re
 import urllib
 import time
 import logging
+import logging.handlers
 import thread
 import gammu
 
 from django.conf import settings
+from django.db import connection, transaction
+from django.db import connections
 
 from models import Message
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.handlers.SysLogHandler(address = '/dev/log')
+logger.addHandler(handler)
 
 
 def import_path(name):
@@ -58,7 +64,7 @@ def process_incoming_message(message):
 def process_outgoing_message(message):
     """ fires a kannel-compatible HTTP request to send message """
 
-    def process_smsd(message):
+    def process_smsd_inject(message):
         smsd = gammu.SMSD(settings.NOSMS_SMSD_CONF)
         msg = to_gammu(message)
         try:
@@ -70,6 +76,14 @@ def process_outgoing_message(message):
             message.status = Message.STATUS_ERROR
             message.save()
             logger.error(e)
+
+
+    def process_smsd(message):
+        cursor = connections['smsd'].cursor()
+        cursor.execute("INSERT INTO outbox () Processed = 'true' " \
+                       "WHERE ID = %s", [sql_id])
+        transaction.commit_unless_managed(using='smsd')
+
 
     def process_kannel_like(message):
         def _str(uni):
@@ -206,7 +220,7 @@ def get_ussd(ussd):
 
     ussd_bin = os.path.join(os.path.dirname(__file__), 'ussd.sh')
     if not hasattr(subprocess, 'check_output'):
-        ussd_string = subprocess.Popen([ussd_bin, ussd], 
+        ussd_string = subprocess.Popen([ussd_bin, ussd],
                                      stdout=subprocess.PIPE).communicate()[0]
     else:
         ussd_string = subprocess.check_output([ussd_bin, ussd]).strip().strip()

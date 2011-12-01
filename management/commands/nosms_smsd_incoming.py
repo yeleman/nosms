@@ -49,8 +49,8 @@ class Command(BaseCommand):
 
         # Message ID in DB is provided as first argument
         if len(args) != 1:
-            #logger.warning("No message ID provided")
-            print("WARN: No message ID provided")
+            #logger.warning(u"No message ID provided")
+            print(u"WARN: No message ID provided")
             return False
         try:
             sql_id = int(args[0])
@@ -58,8 +58,8 @@ class Command(BaseCommand):
             sql_id = None
 
         if not isinstance(sql_id, int):
-            #logger.error("Provided ID (%s) is not an int." % sql_id)
-            print("ERROR: Provided ID (%s) is not an int." % sql_id)
+            #logger.error(u"Provided ID (%s) is not an int." % sql_id)
+            print(u"ERROR: Provided ID (%s) is not an int." % sql_id)
             return False
 
         # open up smsd DB
@@ -69,8 +69,8 @@ class Command(BaseCommand):
                        "ID = %s AND Processed = %s", [sql_id, 'false'])
         msg_data = dictfetchone(cursor)
         if not msg_data:
-            #logger.warning("No unprocessed row in DB for ID %d" % sql_id)
-            print("WARN: No unprocessed row in DB for ID %d" % sql_id)
+            #logger.warning(u"No unprocessed row in DB for ID %d" % sql_id)
+            print(u"WARN: No unprocessed row in DB for ID %d" % sql_id)
             return False
         message = Message(identity=msg_data['SenderNumber'], \
                           text=msg_data['TextDecoded'],

@@ -32,12 +32,12 @@ class Command(BaseCommand):
 
         translation.activate(settings.DEFAULT_LOCALE)
 
-        logger.info("Launching NOSMS main loop")
+        logger.info(u"Launching NOSMS main loop")
 
         incoming = Message.incoming.filter(status=Message.STATUS_CREATED).all()
         if incoming.count() > 0:
             logger.info(u"Dispatching %d unhandled " \
-                        "incoming messages" % incoming.count())
+                        u"incoming messages" % incoming.count())
             for message in incoming:
                 try:
                     process_incoming_message(message)
@@ -50,11 +50,11 @@ class Command(BaseCommand):
         while True:
             message = next_message()
             if message:
-                logger.info("Sending out Message: %s" % message)
+                logger.info(u"Sending out Message: %s" % message)
                 try:
                     process_outgoing_message(message)
                 except Exception as e:
-                    logger.error("Unable to send %s with %r" % (message, e))
+                    logger.error(u"Unable to send %s with %r" % (message, e))
                     message.status = Message.STATUS_ERROR
                     message.save()
                 else:

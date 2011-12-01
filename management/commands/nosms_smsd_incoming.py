@@ -13,7 +13,7 @@ from django.db import connection, transaction
 from django.db import connections
 
 from nosms.models import Message
-from nosms.utils import process_incoming_message
+from nosms.utils import process_incoming_message, import_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -4,6 +4,7 @@
 
 import time
 import logging
+import locale
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -12,6 +13,7 @@ from nosms.utils import process_outgoing_message, process_incoming_message
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+locale.setlocale(locale.LC_ALL, settings.DEFAULT_LOCALE)
 
 
 def next_message():

@@ -64,10 +64,71 @@ def process_incoming_message(message):
             print(u"ERROR: SMS handler failed on %s with %r" % (message, e))
 
 
+def message_to_parts(message):
+    CODING_UNICODE = 'Unicode_No_Compression'
+    CODING_DEFAULT = 'Default_No_Compression'
+    MAX_LEN = 160
+    UMAX_LEN = 70
+    CREATOR = 'nosms'
+
+    text = message.text
+    is_unicode = msg_is_unicode(text)
+    length = text.__len__()
+    first_part = {'DestinationNumber': message.identity,
+                  'Coding': '',
+                  'TextDecoded': '',
+                  'MultiPart': '',
+                  'CreatorID': CREATOR}
+    if not is_unicode and length <= MAX_LEN:
+        # msg is short ascii text. create single
+        first_part['Coding'] = CODING_DEFAULT
+        first_part['TextDecoded'] = text
+        first_part['MultiPart'] = 'false'
+        return [first_part,]
+    elif is_unicode and length <= UMAX_LEN:
+        # msg is short unicode. create single
+        first_part['Coding'] = CODING_UNICODE
+        first_part['TextDecoded'] = text
+        first_part['MultiPart'] = 'false'
+        return [first_part,]
+    else:
+        # msg have to be multipart
+        first_part['MultiPart'] = 'true'
+
+        # find out first part
+        stub = text[:MAX_LEN]
+        if not msg_is_unicode(stub):
+            first_part['Coding'] = CODING_DEFAULT
+            first_part['TextDecoded'] = stub
+            parts_text = text[MAX_LEN:]
+        else:
+            first_part['Coding'] = CODING_UNICODE
+            first_part['TextDecoded'] = text[:UMAX_LEN]
+            parts_text = text[UMAX_LEN:]
+
+        parts = []
+        seq = 1
+        while parts_text:
+            # create part for each chunk
+            part = {'Coding': '', 'TextDecoded': '', 'SequencePosition': seq}
+            stub = parts_text[:MAX_LEN]
+            if not msg_is_unicode(stub):
+                part['Coding'] = CODING_DEFAULT
+                part['TextDecoded'] = stub
+                parts_text = parts_text[MAX_LEN:]
+            else:
+                part['Coding'] = CODING_UNICODE
+                part['TextDecoded'] = parts_text[:UMAX_LEN]
+                parts_text = parts_text[UMAX_LEN:]
+            seq += 1
+            parts.append(part)
+
+    return [first_part] + parts
+
 def process_outgoing_message(message):
     """ fires a kannel-compatible HTTP request to send message """
 
-    def process_smsd(message):
+    def process_smsd_inject(message):
         smsd = gammu.SMSD(settings.NOSMS_SMSD_CONF)
         msg = to_gammu(message)
         try:
@@ -82,6 +143,33 @@ def process_outgoing_message(message):
             #logger.error(e)
             print(u"ERROR %s" % e)
 
+
+    def process_smsd(message):
+        cursor = connections['smsd'].cursor()
+
+        parts = message_to_parts(message)
+
+        # create message (first part)
+        part = parts[0]
+        cursor.execute("INSERT INTO outbox (DestinationNumber, Coding, " \
+                       "TextDecoded, MultiPart, CreatorID) " \
+                       "VALUES (%s, %s, %s, %s, %s)",
+                       [part['DestinationNumber'], part['Coding'],
+                       part['TextDecoded'], part['MultiPart'],
+                       part['CreatorID']])
+        transaction.commit_unless_managed(using='smsd')
+
+        if parts.__len__() > 1:
+            msg_id = cursor.lastrowid
+
+            for i in range(1, parts.__len__() - 1):
+                part = parts[i]
+                cursor.execute("INSERT INTO outbox_multipart " \
+                               "(ID, Coding, TextDecoded, SequencePosition) " \
+                               "VALUES (%s, %s, %s, %s)", [msg_id,
+                               part['Coding'], part['TextDecoded'],
+                               part['SequencePosition']])
+                transaction.commit_unless_managed(using='smsd')
 
     def process_kannel_like(message):
         def _str(uni):

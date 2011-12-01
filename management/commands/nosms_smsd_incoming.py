@@ -93,7 +93,8 @@ class Command(BaseCommand):
             print(u"ERROR: Unbale to call SMS_HANDLER with %r" % e)
         else:
             try:
-                thread.start_new_thread(handler_func, (message,))
+                #thread.start_new_thread(handler_func, (message,))
+                handler_func(message)
             except Exception as e:
                 message.status = Message.STATUS_ERROR
                 message.save()

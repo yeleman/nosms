@@ -68,9 +68,7 @@ def process_incoming_message(message):
 
 def random_udh(length):
     """ random alnum string """
-    return '050003' + hex(random.randint(0, 255))
-    return ''.join([random.choice('abcdefghijklmnopqrstuvwxyz1234567890') \
-                        for i in range(length)])
+    return '050003' + hex(random.randint(0, 255))[2:].upper()
 
 
 def message_to_parts(message):

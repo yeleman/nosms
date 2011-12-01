@@ -80,7 +80,7 @@ def process_outgoing_message(message):
             message.status = Message.STATUS_ERROR
             message.save()
             #logger.error(e)
-            print("ERROR %s" % e)
+            print(u"ERROR %s" % e)
 
 
     def process_kannel_like(message):
@@ -167,7 +167,10 @@ def to_gammu(message, msgclass=1):
     """ converts NoSMS message to Gammu msg """
 
     # important to know length and type of message
-    text = message.text.decode('utf-8')
+    try:
+        text = message.text.decode('utf-8')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        text = message.text
     number = message.identity
     is_unicode = msg_is_unicode(text)
     length = text.__len__()

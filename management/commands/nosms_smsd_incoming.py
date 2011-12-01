@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import translation
 from django.db import connection, transaction
 from django.db import connections
 
@@ -43,6 +44,8 @@ def dictfetchone(cursor):
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
+
+        translation.activate(settings.DEFAULT_LOCALE)
 
         # Message ID in DB is provided as first argument
         if len(args) != 1:
@@ -104,3 +107,5 @@ class Command(BaseCommand):
         cursor.execute("UPDATE inbox SET Processed = 'true' " \
                        "WHERE ID = %s", [sql_id])
         transaction.commit_unless_managed(using='smsd')
+
+        translation.deactivate()

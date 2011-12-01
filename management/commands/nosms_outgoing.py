@@ -6,7 +6,9 @@ import time
 import logging
 import locale
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import translation
 
 from nosms.models import Message
 from nosms.utils import process_outgoing_message, process_incoming_message
@@ -27,6 +29,8 @@ def next_message():
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
+
+        translation.activate(settings.DEFAULT_LOCALE)
 
         logger.info("Launching NOSMS main loop")
 
@@ -60,3 +64,5 @@ class Command(BaseCommand):
                 time.sleep(2)
             except KeyboardInterrupt:
                 break
+
+        translation.deactivate()

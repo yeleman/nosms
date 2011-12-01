@@ -2,6 +2,7 @@
 # encoding=utf-8
 # maintainer: rgaudin
 
+import thread
 import locale
 import time
 import logging
@@ -71,7 +72,25 @@ class Command(BaseCommand):
         message.date = msg_data['ReceivingDateTime']
         message.save()
 
-        process_incoming_message(message)
+        # for some reason it's buggy
+        #process_incoming_message(message)
+        try:
+            handler_func = import_path(settings.NOSMS_HANDLER)
+        except AttributeError:
+            message.status = Message.STATUS_ERROR
+            message.save()
+            logger.error(u"NO SMS_HANDLER defined while receiving SMS")
+        except Exception as e:
+            message.status = Message.STATUS_ERROR
+            message.save()
+            logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+        else:
+            try:
+                thread.start_new_thread(handler_func, (message,))
+            except Exception as e:
+                message.status = Message.STATUS_ERROR
+                message.save()
+                logger.error(u"SMS handler failed on %s with %r" % (message, e))
 
         cursor.execute("UPDATE inbox SET Processed = 'true' " \
                        "WHERE ID = %s", [sql_id])

@@ -6,6 +6,7 @@ import thread
 import locale
 import time
 import logging
+import logging.handlers
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -15,8 +16,11 @@ from django.db import connections
 from nosms.models import Message
 from nosms.utils import process_incoming_message, import_path
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.handlers.SysLogHandler(address = '/dev/log')
+logger.addHandler(handler)
+
 locale.setlocale(locale.LC_ALL, settings.DEFAULT_LOCALE)
 
 

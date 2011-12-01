@@ -181,9 +181,11 @@ def process_outgoing_message(message):
 
         if parts.__len__() > 1:
             msg_id = cursor.lastrowid
+            print(u"MULTIPART with ID %d" % msg_id)
 
-            for i in range(1, parts.__len__() - 1):
+            for i in range(1, parts.__len__()):
                 part = parts[i]
+                print(u"PART: %s" % part)
                 cursor.execute("INSERT INTO outbox_multipart " \
                                "(ID, Coding, TextDecoded, " \
                                "SequencePosition, UDH) " \

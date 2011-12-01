@@ -68,6 +68,7 @@ def process_incoming_message(message):
 
 def random_udh(length):
     """ random alnum string """
+    return '050003' + hex(random.randint(0, 255))
     return ''.join([random.choice('abcdefghijklmnopqrstuvwxyz1234567890') \
                         for i in range(length)])
 
@@ -87,7 +88,7 @@ def message_to_parts(message):
                   'Coding': '',
                   'TextDecoded': '',
                   'MultiPart': '',
-                  'UDH': udh,
+                  'UDH': '%s0101' % udh,
                   'CreatorID': CREATOR}
     if not is_unicode and length <= MAX_LEN:
         # msg is short ascii text. create single
@@ -120,6 +121,7 @@ def message_to_parts(message):
         seq = 1
         while parts_text:
             # create part for each chunk
+            seq += 1
             part = {'Coding': '', 'TextDecoded': '',
                     'SequencePosition': seq, 'UDH': udh}
             stub = parts_text[:MAX_LEN]
@@ -131,10 +133,17 @@ def message_to_parts(message):
                 part['Coding'] = CODING_UNICODE
                 part['TextDecoded'] = parts_text[:UMAX_LEN]
                 parts_text = parts_text[UMAX_LEN:]
-            seq += 1
             parts.append(part)
 
-    return [first_part] + parts
+    all_parts = [first_part] + parts
+    parts_num = all_parts.__len__()
+
+    # adjust UDH for multipart
+    for i in range(0, parts_num):
+        all_parts[i]['UDH'] = '%s%s%s' \
+                              % (udh, str(parts_num).zfill(2), str(i + 1).zfill(2))
+
+    return all_parts
 
 def process_outgoing_message(message):
     """ fires a kannel-compatible HTTP request to send message """

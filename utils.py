@@ -18,7 +18,7 @@ from models import Message
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.handlers.SysLogHandler(address = '/dev/log')
+handler = logging.StreamHandler()
 logger.addHandler(handler)
 
 

@@ -17,7 +17,7 @@ from nosms.utils import process_incoming_message, import_path
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.handlers.SysLogHandler(address = '/dev/log')
+handler = logging.StreamHandler()
 logger.addHandler(handler)
 locale.setlocale(locale.LC_ALL, settings.DEFAULT_LOCALE)
 

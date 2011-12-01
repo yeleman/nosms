@@ -8,6 +8,8 @@ import time
 #import logging
 #import logging.handlers
 import thread
+import random
+
 import gammu
 
 from django.conf import settings
@@ -64,6 +66,12 @@ def process_incoming_message(message):
             print(u"ERROR: SMS handler failed on %s with %r" % (message, e))
 
 
+def random_udh(length):
+    """ random alnum string """
+    return ''.join([random.choice('abcdefghijklmnopqrstuvwxyz1234567890') \
+                        for i in range(length)])
+
+
 def message_to_parts(message):
     CODING_UNICODE = 'Unicode_No_Compression'
     CODING_DEFAULT = 'Default_No_Compression'
@@ -72,12 +80,14 @@ def message_to_parts(message):
     CREATOR = 'nosms'
 
     text = message.text
+    udh = random_udh(8)
     is_unicode = msg_is_unicode(text)
     length = text.__len__()
     first_part = {'DestinationNumber': message.identity,
                   'Coding': '',
                   'TextDecoded': '',
                   'MultiPart': '',
+                  'UDH': udh,
                   'CreatorID': CREATOR}
     if not is_unicode and length <= MAX_LEN:
         # msg is short ascii text. create single
@@ -110,7 +120,8 @@ def message_to_parts(message):
         seq = 1
         while parts_text:
             # create part for each chunk
-            part = {'Coding': '', 'TextDecoded': '', 'SequencePosition': seq}
+            part = {'Coding': '', 'TextDecoded': '',
+                    'SequencePosition': seq, 'UDH': udh}
             stub = parts_text[:MAX_LEN]
             if not msg_is_unicode(stub):
                 part['Coding'] = CODING_DEFAULT
@@ -152,11 +163,11 @@ def process_outgoing_message(message):
         # create message (first part)
         part = parts[0]
         cursor.execute("INSERT INTO outbox (DestinationNumber, Coding, " \
-                       "TextDecoded, MultiPart, CreatorID) " \
-                       "VALUES (%s, %s, %s, %s, %s)",
+                       "TextDecoded, MultiPart, CreatorID, UDH) " \
+                       "VALUES (%s, %s, %s, %s, %s, %s)",
                        [part['DestinationNumber'], part['Coding'],
                        part['TextDecoded'], part['MultiPart'],
-                       part['CreatorID']])
+                       part['CreatorID'], part['UDH']])
         transaction.commit_unless_managed(using='smsd')
 
         if parts.__len__() > 1:
@@ -165,10 +176,11 @@ def process_outgoing_message(message):
             for i in range(1, parts.__len__() - 1):
                 part = parts[i]
                 cursor.execute("INSERT INTO outbox_multipart " \
-                               "(ID, Coding, TextDecoded, SequencePosition) " \
-                               "VALUES (%s, %s, %s, %s)", [msg_id,
+                               "(ID, Coding, TextDecoded, " \
+                               "SequencePosition, UDH) " \
+                               "VALUES (%s, %s, %s, %s, %s)", [msg_id,
                                part['Coding'], part['TextDecoded'],
-                               part['SequencePosition']])
+                               part['SequencePosition'], part['UDH']])
                 transaction.commit_unless_managed(using='smsd')
 
     def process_kannel_like(message):

@@ -5,8 +5,8 @@
 import re
 import urllib
 import time
-import logging
-import logging.handlers
+#import logging
+#import logging.handlers
 import thread
 import gammu
 
@@ -16,10 +16,10 @@ from django.db import connections
 
 from models import Message
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-logger.addHandler(handler)
+#logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
+#handler = logging.StreamHandler()
+#logger.addHandler(handler)
 
 
 def import_path(name):
@@ -47,18 +47,21 @@ def process_incoming_message(message):
     except AttributeError:
         message.status = Message.STATUS_ERROR
         message.save()
-        logger.error(u"NO SMS_HANDLER defined while receiving SMS")
+        #logger.error(u"NO SMS_HANDLER defined while receiving SMS")
+        print(u"ERROR: NO SMS_HANDLER defined while receiving SMS")
     except Exception as e:
         message.status = Message.STATUS_ERROR
         message.save()
-        logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+        #logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+        print(u"ERROR: Unbale to call SMS_HANDLER with %r" % e)
     else:
         try:
             thread.start_new_thread(handler_func, (message,))
         except Exception as e:
             message.status = Message.STATUS_ERROR
             message.save()
-            logger.error(u"SMS handler failed on %s with %r" % (message, e))
+            #logger.error(u"SMS handler failed on %s with %r" % (message, e))
+            print(u"ERROR: SMS handler failed on %s with %r" % (message, e))
 
 
 def process_outgoing_message(message):
@@ -68,14 +71,16 @@ def process_outgoing_message(message):
         smsd = gammu.SMSD(settings.NOSMS_SMSD_CONF)
         msg = to_gammu(message)
         try:
-            logger.debug(u"Sending SMS: %s" % message)
+            #logger.debug(u"Sending SMS: %s" % message)
+            print(u"DEBUG: Sending SMS: %s" % message)
             smsd.InjectSMS([msg])
             message.status = Message.STATUS_PROCESSED
             message.save()
         except gammu.ERR_UNKNOWN as e:
             message.status = Message.STATUS_ERROR
             message.save()
-            logger.error(e)
+            #logger.error(e)
+            print("ERROR %s" % e)
 
 
     def process_kannel_like(message):
@@ -108,7 +113,8 @@ def process_outgoing_message(message):
             res = urllib.urlopen(url)
             ans = res.read()
         except Exception, err:
-            logger.error("Error sending message: %s" % err)
+            #logger.error("Error sending message: %s" % err)
+            print("Error sending message: %s" % err)
 
             # we'll try to send it again later
             message.status = Message.STATUS_CREATED
@@ -124,17 +130,20 @@ def process_outgoing_message(message):
             else:
                 kw = 'sent'
 
-            logger.debug("message %s: %s" % (kw, message))
+            #logger.debug("message %s: %s" % (kw, message))
+            print("DEBUG: message %s: %s" % (kw, message))
             message.status = Message.STATUS_PROCESSED
             message.save()
 
         # temporary error
         elif res.code == 503:
-            logger.error("message failed to send (temporary error): %s" % ans)
+            #logger.error("message failed to send (temporary error): %s" % ans)
+            print("ERROR: message failed to send (temporary error): %s" % ans)
             message.status = Message.STATUS_CREATED
             message.save()
         else:
-            logger.error("message failed to send: %s" % ans)
+            #logger.error("message failed to send: %s" % ans)
+            print("ERROR: message failed to send: %s" % ans)
             message.status = Message.STATUS_ERROR
             message.save()
 
@@ -163,7 +172,8 @@ def to_gammu(message, msgclass=1):
     is_unicode = msg_is_unicode(text)
     length = text.__len__()
 
-    logger.info(u"OUTGOING [%d] %s message: %s" \
+    #logger.info(u"OUTGOING [%d] %s message: %s" \
+    print(u"INFO: OUTGOING [%d] %s message: %s" \
                 % (length, u"unicode" \
                            if is_unicode \
                            else u"ascii", \

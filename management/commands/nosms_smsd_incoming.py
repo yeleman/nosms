@@ -5,7 +5,7 @@
 import thread
 import locale
 import time
-import logging
+#import logging
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -15,10 +15,10 @@ from django.db import connections
 from nosms.models import Message
 from nosms.utils import process_incoming_message, import_path
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-logger.addHandler(handler)
+#logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
+#handler = logging.StreamHandler()
+#logger.addHandler(handler)
 locale.setlocale(locale.LC_ALL, settings.DEFAULT_LOCALE)
 
 
@@ -46,7 +46,8 @@ class Command(BaseCommand):
 
         # Message ID in DB is provided as first argument
         if len(args) != 1:
-            logger.warning("No message ID provided")
+            #logger.warning("No message ID provided")
+            print("WARN: No message ID provided")
             return False
         try:
             sql_id = int(args[0])
@@ -54,7 +55,8 @@ class Command(BaseCommand):
             sql_id = None
 
         if not isinstance(sql_id, int):
-            logger.error("Provided ID (%s) is not an int." % sql_id)
+            #logger.error("Provided ID (%s) is not an int." % sql_id)
+            print("ERROR: Provided ID (%s) is not an int." % sql_id)
             return False
 
         # open up smsd DB
@@ -64,7 +66,8 @@ class Command(BaseCommand):
                        "ID = %s AND Processed = %s", [sql_id, 'false'])
         msg_data = dictfetchone(cursor)
         if not msg_data:
-            logger.warning("No unprocessed row in DB for ID %d" % sql_id)
+            #logger.warning("No unprocessed row in DB for ID %d" % sql_id)
+            print("WARN: No unprocessed row in DB for ID %d" % sql_id)
             return False
         message = Message(identity=msg_data['SenderNumber'], \
                           text=msg_data['TextDecoded'],
@@ -81,18 +84,21 @@ class Command(BaseCommand):
         except AttributeError:
             message.status = Message.STATUS_ERROR
             message.save()
-            logger.error(u"NO SMS_HANDLER defined while receiving SMS")
+            #logger.error(u"NO SMS_HANDLER defined while receiving SMS")
+            print(u"ERROR: NO SMS_HANDLER defined while receiving SMS")
         except Exception as e:
             message.status = Message.STATUS_ERROR
             message.save()
-            logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+            #logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+            print(u"ERROR: Unbale to call SMS_HANDLER with %r" % e)
         else:
             try:
                 thread.start_new_thread(handler_func, (message,))
             except Exception as e:
                 message.status = Message.STATUS_ERROR
                 message.save()
-                logger.error(u"SMS handler failed on %s with %r" % (message, e))
+                #logger.error(u"SMS handler failed on %s with %r" % (message, e))
+                print(u"ERROR: SMS handler failed on %s with %r" % (message, e))
 
         cursor.execute("UPDATE inbox SET Processed = 'true' " \
                        "WHERE ID = %s", [sql_id])

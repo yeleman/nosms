@@ -64,7 +64,7 @@ def process_incoming_message(message):
 def process_outgoing_message(message):
     """ fires a kannel-compatible HTTP request to send message """
 
-    def process_smsd_inject(message):
+    def process_smsd(message):
         smsd = gammu.SMSD(settings.NOSMS_SMSD_CONF)
         msg = to_gammu(message)
         try:
@@ -76,13 +76,6 @@ def process_outgoing_message(message):
             message.status = Message.STATUS_ERROR
             message.save()
             logger.error(e)
-
-
-    def process_smsd(message):
-        cursor = connections['smsd'].cursor()
-        cursor.execute("INSERT INTO outbox () Processed = 'true' " \
-                       "WHERE ID = %s", [sql_id])
-        transaction.commit_unless_managed(using='smsd')
 
 
     def process_kannel_like(message):

@@ -101,8 +101,10 @@ class Command(BaseCommand):
             except Exception as e:
                 message.status = Message.STATUS_ERROR
                 message.save()
-                #logger.error(u"SMS handler failed on %s with %r" % (message, e))
-                print(u"ERROR: SMS handler failed on %s with %r" % (message, e))
+                #logger.error(u"SMS handler failed on %s with %r" \
+                #              % (message, e))
+                print(u"ERROR: SMS handler failed on %s with %r" \
+                      % (message, e))
 
         cursor.execute("UPDATE inbox SET Processed = 'true' " \
                        "WHERE ID = %s", [sql_id])

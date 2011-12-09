@@ -93,13 +93,13 @@ def message_to_parts(message):
         first_part['Coding'] = CODING_DEFAULT
         first_part['TextDecoded'] = text
         first_part['MultiPart'] = 'false'
-        return [first_part,]
+        return [first_part, ]
     elif is_unicode and length <= UMAX_LEN:
         # msg is short unicode. create single
         first_part['Coding'] = CODING_UNICODE
         first_part['TextDecoded'] = text
         first_part['MultiPart'] = 'false'
-        return [first_part,]
+        return [first_part, ]
     else:
         # msg have to be multipart
         first_part['MultiPart'] = 'true'
@@ -139,9 +139,12 @@ def message_to_parts(message):
     # adjust UDH for multipart
     for i in range(0, parts_num):
         all_parts[i]['UDH'] = '%s%s%s' \
-                              % (udh, str(parts_num).zfill(2), str(i + 1).zfill(2))
+                              % (udh,
+                                 str(parts_num).zfill(2),
+                                 str(i + 1).zfill(2))
 
     return all_parts
+
 
 def process_outgoing_message(message):
     """ fires a kannel-compatible HTTP request to send message """
@@ -160,7 +163,6 @@ def process_outgoing_message(message):
             message.save()
             #logger.error(e)
             print(u"ERROR %s" % e)
-
 
     def process_smsd(message):
         cursor = connections['smsd'].cursor()

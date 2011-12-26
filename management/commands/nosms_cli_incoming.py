@@ -50,7 +50,7 @@ class Command(BaseCommand):
         except Exception as e:
             message.status = Message.STATUS_ERROR
             message.save()
-            logger.error(u"Unbale to call SMS_HANDLER with %r" % e)
+            logger.error(u"Unable to call SMS_HANDLER with %r" % e)
         else:
             try:
                 handler_func(message)
